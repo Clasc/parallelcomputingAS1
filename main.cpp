@@ -12,10 +12,10 @@
 using namespace std;
 
 //typedef slot_allocator_sleep slot_allocator;
-typedef slot_allocator_mutex slot_allocator;
+//typedef slot_allocator_mutex slot_allocator;
 //typedef slot_allocator_queue slot_allocator;
 //typedef slot_allocator_mutexes slot_allocator;
-//typedef slot_allocator_just_mutexes slot_allocator;
+typedef slot_allocator_just_mutexes slot_allocator;
 
 int main()
 {
