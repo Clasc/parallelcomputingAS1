@@ -62,8 +62,9 @@ private:
         /* 
             This code works all of the time.
             However, the use of a queue, in combination with a mutex lock, has a negative impact on performance. 
-             - With assertions 40 sec.
-             - Without assertions 20 sec.
+             - With assertions and cout statements 40 sec.
+             - Without assertions with cout statements 20 sec.
+             - Without assertions, no cout statements 0.962354 sec. -- compared to 0.043077 with just mutexes
         */
     }
 };
