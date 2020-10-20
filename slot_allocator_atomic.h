@@ -13,7 +13,7 @@ struct slot_allocator_atomic
 {
     slot_allocator_atomic()
     {
-        lockedSlots.store(0);
+        lockedSlots = 0;
     }
 
     int acquire_slot()
