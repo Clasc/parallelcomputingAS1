@@ -8,6 +8,7 @@
 #include "slot_allocator_mutexes.h"
 #include "slot_allocator_queue.h"
 #include "slot_allocator_mutex.h"
+#include "slot_allocator_atomic.h"
 
 using namespace std;
 
@@ -15,7 +16,8 @@ using namespace std;
 //typedef slot_allocator_mutex slot_allocator;
 //typedef slot_allocator_queue slot_allocator;
 //typedef slot_allocator_mutexes slot_allocator;
-typedef slot_allocator_just_mutexes slot_allocator;
+//typedef slot_allocator_just_mutexes slot_allocator;
+typedef slot_allocator_atomic slot_allocator;
 
 int main()
 {
