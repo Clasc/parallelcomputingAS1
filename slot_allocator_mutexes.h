@@ -39,6 +39,7 @@ struct slot_allocator_mutexes
     void release_slot(int slot)
     {
         locks[slot].lock();
+        assert(slots[slot] == true);
         slots[slot] = false;
         locks[slot].unlock();
     }
@@ -47,4 +48,10 @@ private:
     int num_slots = 10;
     vector<bool> slots;
     vector<mutex> locks;
+
+    /**
+     * Locking only the slots with mutexes is not enough. 
+     * Other parts of the vector can still be changed. 
+     * And it has a big performance impact locking so many mutexes.
+     * */
 };
