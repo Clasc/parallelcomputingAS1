@@ -29,11 +29,26 @@ struct slot_allocator_mutex
 
     void release_slot(int slot)
     {
+        // code fix: add mutex lock
+        m.lock();
+        assertSlots(slot);
         slots[slot] = false;
+        m.unlock();
     }
 
 private:
     int num_slots = 10;
     vector<bool> slots;
     mutex m;
+
+    void assertSlots(int slotToRelease)
+    {
+        assert(slots[slotToRelease] == true);
+    }
+
+    /**
+     * It runs, but after a few times, we do get the same slot all the time
+     * Why? --> Release also needs a mutex lock!
+     * If there is no mutex lock around the release, multiple threads can write simultaneously in the slot.
+     **/
 };
