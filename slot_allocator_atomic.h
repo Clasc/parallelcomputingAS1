@@ -2,6 +2,7 @@
 #include <cassert>
 #include <atomic>
 #include <iostream>
+#include <mutex>
 
 #if !defined(SLOT_ALLOCATOR_ATOMIC)
 #define SLOT_ALLOCATOR_ATOMIC
@@ -34,14 +35,9 @@ struct slot_allocator_atomic
     {
         slot *old_head = slots_head.load();
 
-        while (!old_head)
-        {
-            this_thread::yield();
-            old_head = slots_head.load();
-        }
+        waitForValidHead(old_head);
 
         slot *new_head = old_head->next;
-
         while (!slots_head.compare_exchange_weak(old_head, new_head))
         {
             old_head = slots_head.load();
@@ -50,14 +46,13 @@ struct slot_allocator_atomic
         return old_head->idx;
     }
 
-    void release_slot(int slotIdx)
+    void release_slot(int slot_idx)
     {
-        slot *new_slot = new slot(slotIdx);
+        slot *new_slot = new slot(slot_idx);
         auto old_head = slots_head.load();
         new_slot->next = old_head;
         while (!slots_head.compare_exchange_weak(old_head, new_slot))
         {
-            //the old_head may have been updated by the compare_exchange
             new_slot->next = old_head;
         }
     }
@@ -90,5 +85,14 @@ private:
             slot = slot->next;
         }
         return false;
+    }
+
+    void waitForValidHead(slot *old_head)
+    {
+        while (!old_head)
+        {
+            this_thread::yield();
+            old_head = slots_head.load();
+        }
     }
 };
