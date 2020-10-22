@@ -36,8 +36,8 @@ struct slot_allocator_atomic
 
         while (!old_head)
         {
+            this_thread::yield();
             old_head = slots_head.load();
-            cout << "wating for old head";
         }
 
         slot *new_head = old_head->next;
