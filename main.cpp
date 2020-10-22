@@ -36,9 +36,13 @@ int main()
 			{
 				int slot = alloc.acquire_slot();
 
+				/*
 				cout_lock.lock();
-				cout << slot << endl;
+				cout << "slot :" << slot << endl;
+				alloc.printSlots();
+				cout << endl;
 				cout_lock.unlock();
+				*/
 
 				alloc.release_slot(slot);
 			}

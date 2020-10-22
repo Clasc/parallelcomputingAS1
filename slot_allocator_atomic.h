@@ -1,6 +1,7 @@
 #include <thread>
 #include <cassert>
 #include <atomic>
+#include <iostream>
 
 #if !defined(SLOT_ALLOCATOR_ATOMIC)
 #define SLOT_ALLOCATOR_ATOMIC
@@ -8,32 +9,86 @@
 #endif // SLOT_ALLOCATOR_ATOMIC
 
 using namespace std;
+struct slot
+{
+    int idx;
+    slot *next;
+    slot(int index) : idx{index} {};
+};
 
 struct slot_allocator_atomic
 {
     slot_allocator_atomic()
     {
-        lockedSlots = 0;
+        slots_head = new slot(0);
+
+        for (size_t i = 1; i < num_slots; i++)
+        {
+            auto new_slot = new slot(i);
+            new_slot->next = slots_head;
+            slots_head = new_slot;
+        }
     }
 
     int acquire_slot()
     {
-        while (true)
+        slot *old_head = slots_head.load();
+
+        while (!old_head)
         {
-            if (lockedSlots.load() < num_slots)
-            {
-                lockedSlots++;
-                return lockedSlots.load();
-            }
+            old_head = slots_head.load();
+            cout << "wating for old head";
+        }
+
+        slot *new_head = old_head->next;
+
+        while (!slots_head.compare_exchange_weak(old_head, new_head))
+        {
+            old_head = slots_head.load();
+        }
+
+        return old_head->idx;
+    }
+
+    void release_slot(int slotIdx)
+    {
+        slot *new_slot = new slot(slotIdx);
+        auto old_head = slots_head.load();
+        new_slot->next = old_head;
+        while (!slots_head.compare_exchange_weak(old_head, new_slot))
+        {
+            //the old_head may have been updated by the compare_exchange
+            new_slot->next = old_head;
         }
     }
 
-    void release_slot(int slot)
+    void printSlots()
     {
-        lockedSlots--;
+        auto slot = slots_head.load();
+        cout << "slots:{" << endl;
+        while (slot)
+        {
+            cout << "   " << slot->idx << endl;
+            slot = slot->next;
+        }
+        cout << "}" << endl;
     }
 
 private:
     int num_slots = 10;
-    atomic<int> lockedSlots;
+    atomic<slot *> slots_head;
+
+    bool contains(int idx)
+    {
+        auto slot = slots_head.load();
+        while (slot)
+        {
+            if (slot->idx == idx)
+            {
+                return true;
+            }
+            slot = slot->next;
+        }
+        return false;
+    }
 };
