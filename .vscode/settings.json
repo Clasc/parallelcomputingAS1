@@ -5,6 +5,11 @@
         "__mutex_base": "cpp",
         "mutex": "cpp",
         "condition_variable": "cpp",
-        "chrono": "cpp"
+        "chrono": "cpp",
+        "__threading_support": "cpp",
+        "atomic": "cpp",
+        "memory": "cpp",
+        "new": "cpp",
+        "thread": "cpp"
     }
 }
