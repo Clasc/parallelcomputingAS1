@@ -34,24 +34,22 @@ struct slot_allocator_atomic
 
     int acquire_slot()
     {
-        setDeletable(false);
-
         slot *old_head = slots_head.load(memory_order::memory_order_acquire);
 
-        while (!old_head || !slots_head.compare_exchange_weak(old_head, old_head->next, memory_order::memory_order_release))
-        {
-            //cout << "failed acquiring slot for: " << this_thread::get_id() << endl;
-            old_head = slots_head.load(memory_order::memory_order_acquire);
-        }
+        exec_delete_safe([this, &old_head]() {
+            while (!old_head || !slots_head.compare_exchange_weak(old_head, old_head->next, memory_order::memory_order_release))
+            {
+                //cout << "failed acquiring slot for: " << this_thread::get_id() << endl;
+                old_head = slots_head.load(memory_order::memory_order_acquire);
+            }
+        });
 
         auto idx = old_head->idx;
-        setDeletable(true);
 
         while (!isDeletable())
         {
             cout << "Wait for delete" << endl;
         }
-
         delete old_head;
 
         return idx;
@@ -59,27 +57,25 @@ struct slot_allocator_atomic
 
     void release_slot(int slot_idx)
     {
-        setDeletable(false);
+        exec_delete_safe([this, slot_idx]() {
+            auto old_head = slots_head.load(memory_order::memory_order_acquire);
+            slot *new_slot = new slot(slot_idx);
 
-        auto old_head = slots_head.load(memory_order::memory_order_acquire);
-        slot *new_slot = new slot(slot_idx);
-
-        if (old_head)
-        {
-            new_slot->next = old_head;
-        }
-
-        while (!slots_head.compare_exchange_weak(old_head, new_slot, memory_order::memory_order_release))
-        {
-            //cout << "failed releasing slot for: " << this_thread::get_id() << endl;
-            old_head = slots_head.load(memory_order::memory_order_acquire);
             if (old_head)
             {
                 new_slot->next = old_head;
             }
-        }
 
-        setDeletable(true);
+            while (!slots_head.compare_exchange_weak(old_head, new_slot, memory_order::memory_order_release))
+            {
+                //cout << "failed releasing slot for: " << this_thread::get_id() << endl;
+                old_head = slots_head.load(memory_order::memory_order_acquire);
+                if (old_head)
+                {
+                    new_slot->next = old_head;
+                }
+            }
+        });
     }
 
     void printSlots()
@@ -95,9 +91,17 @@ struct slot_allocator_atomic
     }
 
 private:
-    int num_slots = 2;
+    int num_slots = 8;
     atomic<slot *> slots_head;
     atomic<bool> deletable;
+
+    template <typename Functor>
+    void exec_delete_safe(Functor func)
+    {
+        setDeletable(false);
+        func();
+        setDeletable(true);
+    }
 
     bool isDeletable()
     {
