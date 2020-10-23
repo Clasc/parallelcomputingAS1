@@ -37,7 +37,8 @@ struct slot_allocator_atomic
 
         while (!old_head || !slots_head.compare_exchange_weak(old_head, old_head->next, memory_order::memory_order_release))
         {
-            cout << "failed acquiring slot for: " << this_thread::get_id();
+            //cout << "failed acquiring slot for: " << this_thread::get_id() << endl;
+            old_head = slots_head.load(memory_order::memory_order_acquire);
         }
 
         return old_head->idx;
@@ -47,10 +48,20 @@ struct slot_allocator_atomic
     {
         auto old_head = slots_head.load(memory_order::memory_order_acquire);
         slot *new_slot = new slot(slot_idx);
-        new_slot->next = old_head;
-        while (!old_head || !slots_head.compare_exchange_weak(old_head, new_slot, memory_order::memory_order_release))
+
+        if (old_head)
         {
-            cout << "failed releasing slot for: " << this_thread::get_id();
+            new_slot->next = old_head;
+        }
+
+        while (!slots_head.compare_exchange_weak(old_head, new_slot, memory_order::memory_order_release))
+        {
+            //cout << "failed releasing slot for: " << this_thread::get_id() << endl;
+            old_head = slots_head.load(memory_order::memory_order_acquire);
+            if (old_head)
+            {
+                new_slot->next = old_head;
+            }
         }
     }
 
