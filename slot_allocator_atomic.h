@@ -80,11 +80,6 @@ struct slot_allocator_atomic
         }
 
         setDeletable(true);
-
-        if (old_head == nullptr)
-        {
-            return;
-        }
     }
 
     void printSlots()
