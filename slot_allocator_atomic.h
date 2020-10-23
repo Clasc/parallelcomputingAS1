@@ -33,14 +33,11 @@ struct slot_allocator_atomic
 
     int acquire_slot()
     {
-        slot *old_head = slots_head.load();
+        slot *old_head = slots_head.load(memory_order::memory_order_acquire);
 
-        waitForValidHead(old_head);
-
-        slot *new_head = old_head->next;
-        while (!slots_head.compare_exchange_weak(old_head, new_head))
+        while (!old_head || !slots_head.compare_exchange_weak(old_head, old_head->next, memory_order::memory_order_release))
         {
-            old_head = slots_head.load();
+            cout << "failed acquiring slot for: " << this_thread::get_id();
         }
 
         return old_head->idx;
@@ -48,18 +45,18 @@ struct slot_allocator_atomic
 
     void release_slot(int slot_idx)
     {
+        auto old_head = slots_head.load(memory_order::memory_order_acquire);
         slot *new_slot = new slot(slot_idx);
-        auto old_head = slots_head.load();
         new_slot->next = old_head;
-        while (!slots_head.compare_exchange_weak(old_head, new_slot))
+        while (!old_head || !slots_head.compare_exchange_weak(old_head, new_slot, memory_order::memory_order_release))
         {
-            new_slot->next = old_head;
+            cout << "failed releasing slot for: " << this_thread::get_id();
         }
     }
 
     void printSlots()
     {
-        auto slot = slots_head.load();
+        auto slot = slots_head.load(memory_order::memory_order_acquire);
         cout << "slots:{" << endl;
         while (slot)
         {
@@ -70,7 +67,7 @@ struct slot_allocator_atomic
     }
 
 private:
-    int num_slots = 10;
+    int num_slots = 8;
     atomic<slot *> slots_head;
 
     bool contains(int idx)
@@ -85,14 +82,5 @@ private:
             slot = slot->next;
         }
         return false;
-    }
-
-    void waitForValidHead(slot *old_head)
-    {
-        while (!old_head)
-        {
-            this_thread::yield();
-            old_head = slots_head.load();
-        }
     }
 };
