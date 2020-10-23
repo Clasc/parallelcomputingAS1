@@ -22,6 +22,7 @@ struct slot_allocator_atomic
     slot_allocator_atomic()
     {
         slots_head = new slot(0);
+        setDeletable(false);
 
         for (size_t i = 1; i < num_slots; i++)
         {
@@ -33,6 +34,8 @@ struct slot_allocator_atomic
 
     int acquire_slot()
     {
+        setDeletable(false);
+
         slot *old_head = slots_head.load(memory_order::memory_order_acquire);
 
         while (!old_head || !slots_head.compare_exchange_weak(old_head, old_head->next, memory_order::memory_order_release))
@@ -41,11 +44,23 @@ struct slot_allocator_atomic
             old_head = slots_head.load(memory_order::memory_order_acquire);
         }
 
-        return old_head->idx;
+        auto idx = old_head->idx;
+        setDeletable(true);
+
+        while (!isDeletable())
+        {
+            cout << "Wait for delete" << endl;
+        }
+
+        delete old_head;
+
+        return idx;
     }
 
     void release_slot(int slot_idx)
     {
+        setDeletable(false);
+
         auto old_head = slots_head.load(memory_order::memory_order_acquire);
         slot *new_slot = new slot(slot_idx);
 
@@ -63,6 +78,13 @@ struct slot_allocator_atomic
                 new_slot->next = old_head;
             }
         }
+
+        setDeletable(true);
+
+        if (old_head == nullptr)
+        {
+            return;
+        }
     }
 
     void printSlots()
@@ -78,20 +100,17 @@ struct slot_allocator_atomic
     }
 
 private:
-    int num_slots = 8;
+    int num_slots = 2;
     atomic<slot *> slots_head;
+    atomic<bool> deletable;
 
-    bool contains(int idx)
+    bool isDeletable()
     {
-        auto slot = slots_head.load();
-        while (slot)
-        {
-            if (slot->idx == idx)
-            {
-                return true;
-            }
-            slot = slot->next;
-        }
-        return false;
+        return deletable.load(memory_order::memory_order_acquire);
+    }
+
+    void setDeletable(bool del)
+    {
+        return deletable.store(del, memory_order::memory_order_release);
     }
 };
