@@ -58,7 +58,7 @@ struct slot_allocator_atomic
 
         auto idx = old_head->idx;
         // delete not working yet :/
-        // delete_slot(old_head);
+        delete_slot(old_head);
         return idx;
     }
 
@@ -123,10 +123,10 @@ private:
             //cout << "Wait for delete" << endl;
         }
 
-        exec_delete_safe([slot]() {
+        exec_delete_safe([&slot]() {
             if (slot && slot->next)
             {
-                delete slot;
+                free(slot);
             }
         });
     }
