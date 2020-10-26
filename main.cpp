@@ -39,7 +39,7 @@ int main()
 				/*
 				cout_lock.lock();
 				cout << "slot :" << slot << endl;
-				alloc.printSlots();
+				//alloc.printSlots();
 				cout << endl;
 				cout_lock.unlock();
 				*/
