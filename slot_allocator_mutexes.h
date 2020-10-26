@@ -52,6 +52,7 @@ private:
     /**
      * Locking only the slots with mutexes is not enough. 
      * Other parts of the vector can still be changed. 
+     * Assert asserts to false, since the value slot has alreay been changed.
      * And it has a big performance impact locking so many mutexes.
      * */
 };
