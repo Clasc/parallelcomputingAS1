@@ -34,7 +34,7 @@ struct slot_allocator_sleep
 				All threads are able to access/change the slot array at the same time.
 				There is still the possibility that after the sleep, some threads try to acquire a slot at the same time.
 			*/
-            this_thread::sleep_for(1000ms);
+            this_thread::sleep_for(100ms);
         }
     }
 
