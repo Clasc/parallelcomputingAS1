@@ -57,6 +57,7 @@ struct slot_allocator_atomic
         });
 
         auto idx = old_head->idx;
+        // delete not working yet :/
         // delete_slot(old_head);
         return idx;
     }
