@@ -33,6 +33,17 @@ struct slot_allocator_atomic
         }
     }
 
+    ~slot_allocator_atomic()
+    {
+        auto slot = slots_head.load();
+        while (slot)
+        {
+            auto temp = slot;
+            slot = slot->next;
+            delete temp;
+        }
+    }
+
     int acquire_slot()
     {
         slot *old_head = slots_head.load(memory_order::memory_order_acquire);
@@ -46,7 +57,7 @@ struct slot_allocator_atomic
         });
 
         auto idx = old_head->idx;
-        delete_slot(old_head);
+        // delete_slot(old_head);
         return idx;
     }
 
