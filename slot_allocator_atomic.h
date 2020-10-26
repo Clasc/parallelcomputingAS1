@@ -14,7 +14,8 @@ struct slot
 {
     int idx;
     slot *next;
-    slot(int index) : idx{index} {};
+    slot(int index) : idx{index}, next{nullptr} {};
+    slot(int index, slot *next) : idx{index}, next{next} {};
 };
 
 struct slot_allocator_atomic
@@ -45,13 +46,7 @@ struct slot_allocator_atomic
         });
 
         auto idx = old_head->idx;
-
-        while (!isDeletable())
-        {
-            cout << "Wait for delete" << endl;
-        }
-        delete old_head;
-
+        delete_slot(old_head);
         return idx;
     }
 
@@ -59,12 +54,7 @@ struct slot_allocator_atomic
     {
         exec_delete_safe([this, slot_idx]() {
             auto old_head = slots_head.load(memory_order::memory_order_acquire);
-            slot *new_slot = new slot(slot_idx);
-
-            if (old_head)
-            {
-                new_slot->next = old_head;
-            }
+            slot *new_slot = new slot(slot_idx, old_head);
 
             while (!slots_head.compare_exchange_weak(old_head, new_slot, memory_order::memory_order_release))
             {
@@ -91,7 +81,7 @@ struct slot_allocator_atomic
     }
 
 private:
-    int num_slots = 8;
+    int num_slots = 10;
     atomic<slot *> slots_head;
     atomic<bool> deletable;
 
@@ -111,5 +101,21 @@ private:
     void setDeletable(bool del)
     {
         return deletable.store(del, memory_order::memory_order_release);
+    }
+
+    void delete_slot(slot *slot)
+    {
+        while (!isDeletable())
+        {
+            this_thread::yield();
+            //cout << "Wait for delete" << endl;
+        }
+
+        exec_delete_safe([slot]() {
+            if (slot && slot->next)
+            {
+                delete slot;
+            }
+        });
     }
 };
