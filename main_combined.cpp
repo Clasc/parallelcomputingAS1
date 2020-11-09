@@ -1,3 +1,12 @@
+/**
+ * @file main_combined.cpp
+ * @author Christian Lascsak 01363742
+ * @date 2020-11-09
+ * 
+ * Code was tested on ALMA with the following command:
+ * g++ -pthread main_combined.cpp -o main.out -std=gnu++14 -O2
+ */
+
 #include <thread>
 #include <vector>
 #include <iostream>
