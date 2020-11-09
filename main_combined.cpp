@@ -305,8 +305,6 @@ private:
 //typedef slot_allocator_queue slot_allocator;
 //typedef slot_allocator_mutexes slot_allocator;
 //typedef slot_allocator_just_mutexes slot_allocator;
-//typedef slot_allocator_atomic slot_allocator;
-//typedef slot_allocator_atomic_vector slot_allocator;
 typedef slot_allocator_atomic_array slot_allocator;
 
 int main()
