@@ -25,9 +25,6 @@ struct slot_allocator_atomic_array
 
     int acquire_slot()
     {
-
-        int slot = 0;
-
         for (;;)
         {
             for (auto i{0}; i < num_slots; i++)
