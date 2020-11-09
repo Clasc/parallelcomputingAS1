@@ -28,7 +28,8 @@ struct slot_allocator_sleep
 
             /*
 				The sleep function may work for a short perdiod of time. 
-				However, it is not guaranteeing mutual exclusion. The code has a similar behaviour when using no timeout.
+				However, it is not guaranteeing mutual exclusion. 
+                The code has a similar behaviour when using no timeout.
 				All threads are able to access/change the slot array at the same time.
 				There is still the possibility that after the sleep, some threads try to acquire a slot at the same time.
                 To fix it use a mutex lock or a lock guard.
@@ -177,6 +178,7 @@ struct slot_allocator_mutex
         m.lock();
         assertSlots(slot);
         slots[slot] = false;
+        // code fix: add mutex unlock
         m.unlock();
     }
 
@@ -196,7 +198,7 @@ private:
      * If there is no mutex lock around the release, multiple threads can write simultaneously in the slot.
      * There should not be two threads releasing the same slot, because we make sure during acquiring . 
      * However, it is possible, that a slot is released, and acquired at the same time.
-     * Therefore, we need a lock also when releasing a slot
+     * Therefore, we need a lock also when releasing a slot.
      **/
 };
 
@@ -221,7 +223,8 @@ struct slot_allocator_just_mutexes
     void release_slot(int slot)
     {
         // if the lock can be locked again, it was already unlocked and therefore should assert to false
-        // assert(locks[slot].try_lock() == false);
+        // assert can be uncommented to test performance
+        assert(locks[slot].try_lock() == false);
         locks[slot].unlock();
     }
 
@@ -232,6 +235,8 @@ private:
     /**
      * This allocator worked from the get-go.
      * The added assert checks, if the slot to release is already unlocked. If so, it asserts to false and the execution is stopped.
+     * This allocator however never asserted false. This means it is working correctly.
+     * It is also the one with the best performance. Making it a good code to compare with our atomic solution.
      */
 };
 
