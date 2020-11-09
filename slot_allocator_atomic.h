@@ -102,6 +102,8 @@ private:
 
     /**
      * @brief This Method takes a function and always calls it in delete-safe state. This means, that during this execution it is not possible to delete some data.
+     * Unfortunately, I was not able to synchronize the threads in that way, that the delete was used correctly. 
+     * I therefore had to disable the functionality and write a destructor.
      * 
      * @tparam Functor for passing a function
      * @param func The function, that should be executed, while the allocator is in a non-deletable state.
@@ -109,9 +111,9 @@ private:
     template <typename Functor>
     void exec_delete_safe(Functor func)
     {
-        setDeletable(false);
+        //setDeletable(false);
         func();
-        setDeletable(true);
+        //setDeletable(true);
     }
 
     bool isDeletable()
@@ -121,7 +123,11 @@ private:
 
     void setDeletable(bool del)
     {
-        return deletable.store(del, memory_order::memory_order_release);
+        auto old_del = isDeletable();
+        while (!deletable.compare_exchange_weak(old_del, del, memory_order::memory_order_release))
+        {
+            old_del = isDeletable();
+        }
     }
 
     void delete_slot(slot *slot)
