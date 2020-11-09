@@ -30,9 +30,10 @@ struct slot_allocator_sleep
 
             /*
 				The sleep function may work for a short perdiod of time. 
-				However, it is not guaranteeing anything. The code has a similar behaviour when using no timeout.
+				However, it is not guaranteeing mutual exclusion. The code has a similar behaviour when using no timeout.
 				All threads are able to access/change the slot array at the same time.
 				There is still the possibility that after the sleep, some threads try to acquire a slot at the same time.
+                To fix it use a mutex lock or a lock guard.
 			*/
             this_thread::sleep_for(100ms);
         }
