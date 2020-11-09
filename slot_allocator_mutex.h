@@ -50,5 +50,8 @@ private:
      * It runs, but after a few times, we do get the same slot all the time
      * Why? --> Release also needs a mutex lock!
      * If there is no mutex lock around the release, multiple threads can write simultaneously in the slot.
+     * There should not be two threads releasing the same slot, because we make sure during acquiring . 
+     * However, it is possible, that a slot is released, and acquired at the same time.
+     * Therefore, we need a lock also when releasing a slot
      **/
 };
