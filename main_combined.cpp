@@ -306,7 +306,7 @@ typedef slot_allocator_atomic_array slot_allocator;
 int main()
 {
     int num_threads = 8;
-    int repeats = 20;
+    int repeats = 100000;
     slot_allocator alloc;
 
     mutex cout_lock; //this could be used to print out the slot numbers in an orderly manner
