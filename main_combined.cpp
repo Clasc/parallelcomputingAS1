@@ -280,17 +280,18 @@ struct slot_allocator_atomic_array
     }
 
 private:
-    int num_slots = 5;
+    int num_slots = 10;
     atomic<bool> *slots;
     /**
      * Performance:
      * Depending on the system this is compiled and run on.
      * On my machine (Macbook pro 2016) -
-     * - Just Mutexes takes around ~0.035 seconds.
-     * - Atomic Array takes around ~0.06 seconds.
+     * - Just Mutexes take around ~0.035 sec.
+     * - Atomic Array take around ~0.07 sec.
      * 
      * On ALMA we are getting a different result.
-     * - Just Mutexes take around 
+     * - Just Mutexes take around 0.3 sec.
+     * - Atomic Array takes around 0.1 sec.
      */
 };
 
