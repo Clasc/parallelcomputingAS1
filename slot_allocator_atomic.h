@@ -19,7 +19,7 @@ struct slot
 
     ~slot()
     {
-        if (next == NULL)
+        if (!next)
         {
             return;
         }
@@ -33,7 +33,6 @@ struct slot_allocator_atomic
     slot_allocator_atomic()
     {
         slots_head = new slot(0);
-        // setDeletable(false);
 
         for (size_t i = 1; i < num_slots; i++)
         {
@@ -46,48 +45,46 @@ struct slot_allocator_atomic
     ~slot_allocator_atomic()
     {
         auto slot = slots_head.load();
-        if (slot == NULL)
+        auto deletable_head = deletable_slots.load();
+        if (slot)
         {
-            return;
+            delete slot;
         }
 
-        delete slot;
+        if (deletable_head)
+        {
+            // delete deletable_head;
+        }
     }
 
     int acquire_slot()
     {
         slot *old_head = slots_head.load(memory_order::memory_order_acquire);
 
-        exec_delete_safe([this, &old_head]() {
-            while (!old_head || !slots_head.compare_exchange_weak(old_head, old_head->next, memory_order::memory_order_release))
-            {
-                //cout << "failed acquiring slot for: " << this_thread::get_id() << endl;
-                old_head = slots_head.load(memory_order::memory_order_acquire);
-            }
-        });
+        while (!old_head || !slots_head.compare_exchange_weak(old_head, old_head->next, memory_order::memory_order_release))
+        {
+            //cout << "failed acquiring slot for: " << this_thread::get_id() << endl;
+            old_head = slots_head.load(memory_order::memory_order_acquire);
+        }
 
-        auto idx = old_head->idx;
-        // delete not working yet :/
-        // delete_slot(old_head);
-        return idx;
+        set_deletable(old_head);
+        return old_head->idx;
     }
 
     void release_slot(int slot_idx)
     {
-        exec_delete_safe([this, slot_idx]() {
-            auto old_head = slots_head.load(memory_order::memory_order_acquire);
-            slot *new_slot = new slot(slot_idx, old_head);
+        auto old_head = slots_head.load(memory_order::memory_order_acquire);
+        slot *new_slot = new slot(slot_idx, old_head);
 
-            while (!slots_head.compare_exchange_weak(old_head, new_slot, memory_order::memory_order_release))
+        while (!slots_head.compare_exchange_weak(old_head, new_slot, memory_order::memory_order_release))
+        {
+            //cout << "failed releasing slot for: " << this_thread::get_id() << endl;
+            old_head = slots_head.load(memory_order::memory_order_acquire);
+            if (old_head)
             {
-                //cout << "failed releasing slot for: " << this_thread::get_id() << endl;
-                old_head = slots_head.load(memory_order::memory_order_acquire);
-                if (old_head)
-                {
-                    new_slot->next = old_head;
-                }
+                new_slot->next = old_head;
             }
-        });
+        }
     }
 
     void printSlots()
@@ -107,49 +104,14 @@ private:
     atomic<slot *> slots_head;
     atomic<slot *> deletable_slots;
 
-    /**
-     * @brief This Method takes a function and always calls it in delete-safe state. This means, that during this execution it is not possible to delete some data.
-     * Unfortunately, I was not able to synchronize the threads in that way, that the delete was used correctly. 
-     * I therefore had to disable the functionality and write a destructor.
-     * 
-     * @tparam Functor for passing a function
-     * @param func The function, that should be executed, while the allocator is in a non-deletable state.
-     */
-    template <typename Functor>
-    void exec_delete_safe(Functor func)
+    void set_deletable(slot *slot)
     {
-        //setDeletable(false);
-        func();
-        //setDeletable(true);
-    }
-
-    bool isDeletable()
-    {
-        return deletable.load(memory_order::memory_order_acquire);
-    }
-
-    void setDeletable(bool del)
-    {
-        auto old_del = isDeletable();
-        while (!deletable.compare_exchange_weak(old_del, del, memory_order::memory_order_release))
+        auto old_head = deletable_slots.load(memory_order::memory_order_acquire);
+        slot->next = old_head;
+        while (!deletable_slots.compare_exchange_weak(old_head, slot, memory_order::memory_order_release))
         {
-            old_del = isDeletable();
+            old_head = deletable_slots.load(memory_order::memory_order_acquire);
+            slot->next = old_head;
         }
-    }
-
-    void delete_slot(slot *slot)
-    {
-        while (!isDeletable())
-        {
-            this_thread::yield();
-            //cout << "Wait for delete" << endl;
-        }
-
-        exec_delete_safe([&slot]() {
-            if (slot && slot->next)
-            {
-                free(slot);
-            }
-        });
     }
 };
