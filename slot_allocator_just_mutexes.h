@@ -31,7 +31,7 @@ struct slot_allocator_just_mutexes
     void release_slot(int slot)
     {
         // if the lock can be locked again, it was already unlocked and therefore should assert to false
-        assert(locks[slot].try_lock() == false);
+        // assert(locks[slot].try_lock() == false);
         locks[slot].unlock();
     }
 
