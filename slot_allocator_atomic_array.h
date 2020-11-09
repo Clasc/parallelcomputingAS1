@@ -32,15 +32,12 @@ struct slot_allocator_atomic_array
         {
             for (auto i{0}; i < num_slots; i++)
             {
-                auto is_locked = slots[i].load(memory_order::memory_order_acquire);
-                if (!is_locked)
+                auto is_locked = slots[i].load();
+                if (slots[i].compare_exchange_weak(is_locked, true))
                 {
-                    while (!slots[i].compare_exchange_weak(is_locked, true, memory_order::memory_order_release))
-                    {
-                        is_locked = slots[i].load(memory_order::memory_order_acquire);
-                    }
                     return i;
                 }
+                continue;
             }
             this_thread::yield();
         }
@@ -48,10 +45,11 @@ struct slot_allocator_atomic_array
 
     void release_slot(int slot_idx)
     {
-        bool is_locked = slots[slot_idx].load(memory_order::memory_order_acquire);
-        while (!slots[slot_idx].compare_exchange_weak(is_locked, false, memory_order::memory_order_release))
+        bool is_locked = slots[slot_idx].load();
+        while (!slots[slot_idx].compare_exchange_weak(is_locked, false))
         {
-            is_locked = slots[slot_idx].load(memory_order::memory_order_acquire);
+            is_locked = slots[slot_idx].load();
+            this_thread::yield();
         }
     }
 
