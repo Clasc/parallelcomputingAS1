@@ -16,6 +16,16 @@ struct slot
     slot *next;
     slot(int index) : idx{index}, next{nullptr} {};
     slot(int index, slot *next) : idx{index}, next{next} {};
+
+    ~slot()
+    {
+        if (next == NULL)
+        {
+            return;
+        }
+
+        delete next;
+    }
 };
 
 struct slot_allocator_atomic
@@ -23,7 +33,7 @@ struct slot_allocator_atomic
     slot_allocator_atomic()
     {
         slots_head = new slot(0);
-        setDeletable(false);
+        // setDeletable(false);
 
         for (size_t i = 1; i < num_slots; i++)
         {
@@ -35,16 +45,13 @@ struct slot_allocator_atomic
 
     ~slot_allocator_atomic()
     {
-        // This destructor is needed, because I was not able to delete slots on during execution.
-        // There was often a case, where a thread was pointing to the deleting head, which broke the code.
-
         auto slot = slots_head.load();
-        while (slot)
+        if (slot == NULL)
         {
-            auto temp = slot;
-            slot = slot->next;
-            delete temp;
+            return;
         }
+
+        delete slot;
     }
 
     int acquire_slot()
@@ -98,7 +105,7 @@ struct slot_allocator_atomic
 private:
     int num_slots = 10;
     atomic<slot *> slots_head;
-    atomic<bool> deletable;
+    atomic<slot *> deletable_slots;
 
     /**
      * @brief This Method takes a function and always calls it in delete-safe state. This means, that during this execution it is not possible to delete some data.
