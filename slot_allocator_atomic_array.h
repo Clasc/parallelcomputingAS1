@@ -15,7 +15,7 @@ struct slot_allocator_atomic_array
 {
     slot_allocator_atomic_array()
     {
-        slots = new atomic<bool>[this->num_slots];
+        slots = new atomic<bool>[num_slots];
     }
 
     ~slot_allocator_atomic_array()
@@ -29,12 +29,17 @@ struct slot_allocator_atomic_array
         {
             for (auto i{0}; i < num_slots; i++)
             {
-                auto is_locked = slots[i].load();
-                if (slots[i].compare_exchange_weak(is_locked, true))
+                auto is_locked = slots[i].load(memory_order::memory_order_acquire);
+                if (is_locked)
                 {
-                    return i;
+                    continue;
                 }
-                continue;
+
+                while (!slots[i].compare_exchange_weak(is_locked, true, memory_order::memory_order_release))
+                {
+                    is_locked = slots[i].load(memory_order::memory_order_acquire);
+                }
+                return i;
             }
             this_thread::yield();
         }

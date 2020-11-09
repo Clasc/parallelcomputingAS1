@@ -253,12 +253,17 @@ struct slot_allocator_atomic_array
         {
             for (auto i{0}; i < num_slots; i++)
             {
-                auto is_locked = slots[i].load();
-                if (slots[i].compare_exchange_weak(is_locked, true))
+                auto is_locked = slots[i].load(memory_order::memory_order_acquire);
+                if (is_locked)
                 {
-                    return i;
+                    continue;
                 }
-                continue;
+
+                while (!slots[i].compare_exchange_weak(is_locked, true, memory_order::memory_order_release))
+                {
+                    is_locked = slots[i].load(memory_order::memory_order_acquire);
+                }
+                return i;
             }
             this_thread::yield();
         }
@@ -266,17 +271,27 @@ struct slot_allocator_atomic_array
 
     void release_slot(int slot_idx)
     {
-        bool is_locked = slots[slot_idx].load();
-        while (!slots[slot_idx].compare_exchange_weak(is_locked, false))
+        bool is_locked = slots[slot_idx].load(memory_order::memory_order_acquire);
+        while (!slots[slot_idx].compare_exchange_weak(is_locked, false, memory_order::memory_order_release))
         {
-            is_locked = slots[slot_idx].load();
+            is_locked = slots[slot_idx].load(memory_order::memory_order_acquire);
             this_thread::yield();
         }
     }
 
 private:
-    int num_slots = 10;
+    int num_slots = 5;
     atomic<bool> *slots;
+    /**
+     * Performance:
+     * Depending on the system this is compiled and run on.
+     * On my machine (Macbook pro 2016) -
+     * - Just Mutexes takes around ~0.035 seconds.
+     * - Atomic Array takes around ~0.06 seconds.
+     * 
+     * On ALMA we are getting a different result.
+     * - Just Mutexes take around 
+     */
 };
 
 //typedef slot_allocator_sleep slot_allocator;
@@ -291,7 +306,7 @@ typedef slot_allocator_atomic_array slot_allocator;
 int main()
 {
     int num_threads = 8;
-    int repeats = 100000;
+    int repeats = 20;
     slot_allocator alloc;
 
     mutex cout_lock; //this could be used to print out the slot numbers in an orderly manner
@@ -305,12 +320,10 @@ int main()
             {
                 int slot = alloc.acquire_slot();
 
-                /*
-				cout_lock.lock();
-				cout << "slot :" << slot << endl;
-				cout << endl;
-				cout_lock.unlock();
-				*/
+                // cout_lock.lock();
+                // cout << "slot :" << slot << endl;
+                // cout << endl;
+                // cout_lock.unlock();
 
                 alloc.release_slot(slot);
             }
