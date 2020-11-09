@@ -51,8 +51,8 @@ private:
 
     /**
      * Locking only the slots with mutexes is not enough. 
-     * Other parts of the vector can still be changed. 
-     * Assert asserts to false, since the value slot has alreay been changed.
-     * And it has a big performance impact locking so many mutexes.
+     * Other parts of the vector can still be changed -> There is a possibility, that a Thread is acquiring a slot, while another is releasing it at the same time. 
+     * Assert in release_slot asserts to false, since the value slot has alreay been changed.
+     * It has a big performance impact locking so many mutexes. It's more efficient only having one mutex for the whole vector.
      * */
 };

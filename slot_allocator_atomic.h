@@ -35,6 +35,9 @@ struct slot_allocator_atomic
 
     ~slot_allocator_atomic()
     {
+        // This destructor is needed, because I was not able to delete slots on during execution.
+        // There was often a case, where a thread was pointing to the deleting head, which broke the code.
+
         auto slot = slots_head.load();
         while (slot)
         {
@@ -58,7 +61,7 @@ struct slot_allocator_atomic
 
         auto idx = old_head->idx;
         // delete not working yet :/
-        delete_slot(old_head);
+        // delete_slot(old_head);
         return idx;
     }
 
@@ -97,6 +100,12 @@ private:
     atomic<slot *> slots_head;
     atomic<bool> deletable;
 
+    /**
+     * @brief This Method takes a function and always calls it in delete-safe state. This means, that during this execution it is not possible to delete some data.
+     * 
+     * @tparam Functor for passing a function
+     * @param func The function, that should be executed, while the allocator is in a non-deletable state.
+     */
     template <typename Functor>
     void exec_delete_safe(Functor func)
     {

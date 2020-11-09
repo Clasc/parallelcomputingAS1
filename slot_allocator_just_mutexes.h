@@ -38,4 +38,9 @@ struct slot_allocator_just_mutexes
 private:
     int num_slots = 10;
     vector<mutex> locks;
+
+    /**
+     * This allocator worked from the get-go.
+     * The added assert checks, if the slot to release is already unlocked. If so, it asserts to false and the execution is stopped.
+     */
 };
